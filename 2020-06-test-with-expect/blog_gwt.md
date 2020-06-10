@@ -1,6 +1,6 @@
 # Test-With-Expect: A BDD-style Go naming pattern
 
-_TL;DR: This article demonstrate how to write GWT-inspired tests in plain Go, and how to name them. Skip to the Go TWE heading to see the result._
+_TL;DR: This article demonstrate how to write GWT-inspired tests in plain Go, and how to name them. Skip to the Go TWE heading to see the result, or explore the [summary article](https://medium.com/@smyrman/test-with-expect-a-bdd-style-go-naming-pattern-1838f84a4128) on Medium_.
 
 [GWT][gwt], or "Given-When-Then", is a great naming convention for tests that comes from the [BDD][bdd], or "Behavior-Driven-Development" paradigm. It makes it easy to _plan_ tests as well as the _behavior_ of your feature before you start the detailed implementation.
 
@@ -282,7 +282,7 @@ Besides, having the full test name printed in-tact _does_ hold value; it can be 
 
 ## Conclusion
 
-As for a final conclusion, I want to leave this up to the reader. Do _you_ think Given-When-Expect is a meaningful way to name sub-tests in Go? Would you do it yourself, or would you prefer the DSL from one of the main frameworks?
+As for a final conclusion, I want to leave this up to the reader. Do _you_ think Test-With-Expect is a meaningful way to name sub-tests in Go? Would you prefer to use sub-tests, or would you prefer the DSL from one of the main frameworks?
 
 [go-subtests]: https://blog.golang.org/subtests
 [gwt]: https://www.agilealliance.org/glossary/gwt/
