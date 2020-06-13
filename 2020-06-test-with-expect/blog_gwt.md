@@ -247,7 +247,7 @@ FAIL
 Test-With-Expect is our _base_, but these three words are not always enough. Maybe you need more words? One additional word I have used myself, is `After`. It is not useful in this example, but what if you are writing tests that utilize a for-loop and do a check for each iteration? Other starting words could be called for in specific contexts, but be sure to limit the number and usage to ensure consistency.
 
 ```txt
-TestX/With_Y/After_N_repetitions/Expect_no_error.
+TestX/With_Y/After_N_repetitions/Expect_no_error
 ```
 
 You can also include information for failing tests _without_ putting information in the name; just make a call to `t.Log`/`t.Logf`. By default, this output only appear if your (sub-)test actually fails.
@@ -256,18 +256,18 @@ The following code shows both a log statement and a useful setup/teardown patter
 
 ```go
 func TestResourceFind(t *testing.T) {
-    setup := func(t *testing.T, cnt int) (r Resource, teardown func()) {
-        t.Logf("Resource R set-up with %d records", cnt)
-        // setup r with records ...
-	// setup teardown function ...
-        return
-    }
-    t.Run("With Query={Limit:5,Offset:32}", func(t *testing.T) {
-        r, teardown := setup(t, 1000)
-        defer teardown()
-        // test r.Find ...
-    })
-    // ...
+	setup := func(t *testing.T, cnt int) (r Resource, teardown func()) {
+		t.Logf("Resource R set-up with %d records", cnt)
+		// setup r with records ...
+		// setup teardown function ...
+		return
+	}
+		t.Run("With Query={Limit:5,Offset:32}", func(t *testing.T) {
+		r, teardown := setup(t, 1000)
+		defer teardown()
+		// test r.Find ...
+	})
+	// ...
 }
 ```
 
