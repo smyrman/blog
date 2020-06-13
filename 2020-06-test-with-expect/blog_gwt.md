@@ -1,5 +1,7 @@
 # Test-With-Expect: A BDD-style Go naming pattern
 
+**This article has received minor edited since it was first released, see the full [history](https://github.com/smyrman/blog/commits/master/2020-06-test-with-expect/blog_gwt.md) on GitHub.**
+
 _TL;DR: This article demonstrate how to write GWT-inspired tests in plain Go, and how to name them. Skip to the Go TWE heading to see the result, or explore the [summary article](https://medium.com/@smyrman/test-with-expect-a-bdd-style-go-naming-pattern-1838f84a4128) on Medium_.
 
 [GWT][gwt], or "Given-When-Then", is a great naming convention for tests that comes from the [BDD][bdd], or "Behavior-Driven-Development" paradigm. It makes it easy to _plan_ tests as well as the _behavior_ of your feature before you start the detailed implementation.
@@ -148,15 +150,15 @@ Naming a test after the type, function or method that is under test is a pretty 
 
 The fundamental concepts that GWT offers, are pretty cool, but the words themselves -- Given, When, Then -- is actually less important. We will look at an alternative wording that fit better for Go in particular, but it can of-course apply elsewhere.
 
-Another aspect wi will attack, is that GWT names are written to be human readable, and as they form near complete "English-like" sentences using what BDD-guys call _natural language_, they are also _naturally_ long. If there is _one_ idiom that is important in Go though, it is that _names_ should be short and precise, rather then long and windy. That's not my words. Here is an extract from Rus Cox's famous [naming philosophy][rsc-quote] quote:
+Another aspect wi will attack, is that GWT names are written to be human readable, and as they form near complete "English-like" sentences using what BDD-guys call _natural language_, they are also _naturally_ long. If there is _one_ idiom that is important in Go though, it is that _names_ should be short and precise, rather then long-winded. That's not my words. Here is an extract from Rus Cox's porclaimed and well-worded [naming philosophy][rsc-quote]:
 
 > A name's length should not exceed its information content. (...) Global names must convey relatively more information, because they appear in a larger variety of contexts. Even so, a short, precise name can say more than a long-winded one: compare acquire and take_ownership. Make every name tell.
 
 Other advice and information that relate to Go names, include:
 
 - Names in Go have [semantic effect](https://golang.org/doc/effective_go.html#names).
-- Avoid redundancy in names, E.g. package names + global names.
-- Short and concise is more important than grammatical correctness. E.g. a constant named `StatusFail` read just as well as `StatusFailure`.
+- One should avoid redundancy in names, E.g. package names + global names.
+- Short and concise appear more important than grammatical correctness. E.g. a constant named `StatusFail` read just as well as `StatusFailure`.
 
 The first restriction to note here, is that names have semantic effect. Relevant to our case, all test function names in Go _have_ to start with the word `Test`. Taking the consequence of this, we might as well include that as our first word. The next two words follow relatively naturally from that restriction:
 
@@ -257,7 +259,8 @@ func TestResourceFind(t *testing.T) {
     setup := func(t *testing.T, cnt int) (r Resource, teardown func()) {
         t.Logf("Resource R set-up with %d records", cnt)
         // setup r with records ...
-        return r
+	// setup teardown function ...
+        return
     }
     t.Run("With Query={Limit:5,Offset:32}", func(t *testing.T) {
         r, teardown := setup(t, 1000)
