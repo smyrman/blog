@@ -1,4 +1,4 @@
-# Generics beyond the playground
+# Go generics beyond the playground
 
 While Go as of version 1.16 does not support Generics, there is an accepted [language proposal][lang-prop] for it, and we can _probably_ expect it to arrive in Go 1.18 or later. But as it turns out, we don't need to wait for it to start experimenting with the new feature. We can start _now_ to write small snippets of code on the [go2go playground][go2go-play], or even full Go packages that you [develop locally][go2go-readme].
 
@@ -234,7 +234,7 @@ So comes the problem to solve with generics. Because what's the point of passing
 
 ## The generic re-design
 
-Finally, the re-design. With _generics_ we can enforce type-safety for the check and value initializer combination into tests, like this:
+Finally, the re-design. With _generics_, or _type parameterization_, which the proposed Go generics is more accurately called, we can enforce type-safety for the check and value initializer combination into tests. To demonstrate how, here is a re-write of the subtest core-design:
 
 ```go
 type CheckFunc[T any]func(func() T) error
@@ -254,25 +254,24 @@ func Test(vf func() T, cf CheckFunc[T]) func(t *testing.T) {
 }
 ```
 
-Each individual check can either rely on generics, or type parameterization to be exact, or not. E.g.:
+Each individual check can either rely type parameterization or not. E.g.:
 
 ```go
-// A type parameterized check that works for all comparable values.
+// A type parameterized check that works for comparable values.
 func CompareEqual[T comparable](v T) CheckFunc[T] {...}
 
-// A type check that works for time values only.
+// A check that works for time values.
 func TimeBefore(t time.Time) CheckFunc[time.Time] {...}
 
 // A type parameterized check that works on any value, but compares against an
-// interface.
+// interface instead of the specific type.
 func DeepEqual[T any](w interface{}) CheckFunc[T] {...}
 
 // A type parameterized check that works on any value, without a compare value.
 func ReflectNil[T any]() CheckFunc[T]
-
 ```
 
-If we try to combine a `subx.TimeBefore` check with a `mypkg.Vector` value initializer, compilation would fail. If we try to combine a `mypkg.CompareEqual` with the same initializer, it will work if `mypkg.Vector` is implemented as a comparable type. E.g. if `mypkg.Vector` is implemented as a struct with three fields, that are all comparable. then it will work:
+The trick here is that the type used to initialize the _check_ and the type returned by the _value initializer_ needs to match. If we try to combine a `subx.TimeBefore` check with a `mypkg.Vector` value initializer, compilation would fail. If we try to combine a `mypkg.CompareEqual` with the same initializer, it will work if `mypkg.Vector` is implemented as a comparable type. E.g. if `mypkg.Vector` is implemented as a struct with three fields, that are all comparable. then it will work:
 
 ```go
 type Vector struct{
@@ -280,11 +279,26 @@ type Vector struct{
 }
 ```
 
-If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail, indicating we _should_ be using a `subx.DeepEqual` check instead. If we write a check-function type specifically for a vector, we now do not need to type-cast.
+If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail, indicating we _should_ be using a `subx.DeepEqual` check instead. If we write a check-function type specifically for a vector, we now do not need to type-cast. Assuming that `CompareEqual` won't work, we can now rewrite our test:
+
+```go
+func TestSum(t *testing.T) {
+	a := mypkg.Vector{1, 0, 3}
+	b := mypkg.Vector{0, 1, -2}
+	expect := mypkg.Vector{1, 1, 1}
+
+	result, err := mypkg.Sum(a, b)
+
+	t.Run("Expect no error", subx.Test(subx.Value(err), subx.CompareEqual(nil))
+	t.Run("Expect correct sum", subx.Test(subx.Value(result), subx.DeepEqual[mypkg.Vector](expect)))
+}
+```
+
+Note that due to Go generic type inference, you don't always need to explicitly specify that type (using `[T]` syntax) when you initialize something that has been declared with type parameterization.
 
 ## Some cool things you can do with subx
 
-While not part of the core design, we define syntactic sugar with different short-hand methods based on which value-initializer you used. E.g/
+While not part of the core design, we define syntactic sugar with different short-hand methods based on which value-initializer you used. E.g.:
 
 ```go
 // Instead Of:
@@ -306,6 +320,14 @@ vf := func() int {
 t.Run("Expect stabler results", subx.Test(vf,
 	subx.AllOf(subx.Repeat(1000, subx.CompareEqual[int](5))...),
 ))
+```
+
+If you want to run a check outside of a test, you can do that as well:
+
+```go
+result := mypkg.Sum(2, 3)
+cf := subtest.CompareEqual(5)
+fmt.Println("CHECK sum error:", cf(subtest.Value(result)))
 ```
 
 ## Challenge: go beyond the playground
