@@ -106,7 +106,7 @@ So, let's go through which problems we managed to solve by this, and which one w
 
 First out, you might note that we do not pass in a `t` parameter. That is because what `subtest` does, is to _return a test function_. This test function can then be run as a Go _sub-test_, omitting the need to manually pass in a `t` parameter. Cleaver? I certainly thought so when I first had the idea.
 
-Next up we solved the ordering issue of "got" and "want". You can see that we first call `Value` on the result. This actually return what we call a `ValueFunc` or _value initializer_. It is not important now to explain why it's a function, but we can perhaps get back to that. The important part now is that this type has _methods_ that let's us initialize tests. In this particular instance, we where call the method `DeepEqual` which we call with the expect parameter. Here we have also attempted to solve the clarity issue of what `Equal` does, by giving the method a more descriptive name.
+Next up we solved the ordering issue of "got" and "want". You can see that we first call `Value` on the result. This actually return what we call a `ValueFunc` or _value initializer_. It is not important now to explain why it's a function, but we can perhaps get back to that. The important part now is that this type has _methods_ that let's us initialize tests. In this particular instance, we call the method `DeepEqual` with the expect parameter. Here we have also attempted to solve the clarity issue of what `Equal` does, by giving the method a more descriptive name.
 
 Next up, as we pass the `func(*testing.T)` instance returned by `DeepEqual` to `t.Run`, this method require you to supply a _name_. Thus a description for the check is required. In fact, as we are using Go sub-tests, there is now even a way for you to re-run a particular _check_ in your test for better focus during de-bugging:
 
@@ -121,6 +121,7 @@ As for the final problem though, compile time type-safety, `subtest` definitivel
 If we do the count, we gather that `subtest` appear to solve five out of the six problems we identified with the assert library. At this point though, it's important to note that at the point the `assert` package was designed, the sub-test feature in Go did not yet exist. Therefore it would have been impossible for that library to embed it into it's design. This is also true for [Gomega][gomega] and [Ginko][ginko], which have been to some inspiration for subtest. This proves to demonstrate that with new features in the Go language and standard library, new ways of designing programs become possible. And this brings us to generics.
 
 With generics added to our tool-box, can we manage to solve all six problems by _starting over_?
+
 ## But why do we even need a matcher library?
 
 Before we start of re-designing a tool, it might be worth while asking yourself the question, what _exactly_ is the tool trying to solve? And why would you ever want to use it? In this case, why do I need a matcher library in Go?
@@ -162,10 +163,10 @@ So, remember this code?
 t.Run("Expect correct sum", subtest.Value(result).DeepEqual(expect))
 ```
 
-We mentioned the code generates a test, and we mentioned something about lack of type-safety, but we didn't give to much detail around exactly what we meant by this. Well, actually this code is just a _short-hand_ syntax. As it happens, the _long_ syntax for the same operation reveals the underlying design much better.
+We mentioned the code generates a test, and we mentioned something about lack of type-safety, but we didn't give to much detail around exactly what we mean by this. Well, actually this code is just a _short-hand_ syntax. As it happens, the _long_ syntax for the same operation reveals the underlying design much better.
 
 ```go
-t.Run("Expect correct sum", subetst.Value(result).Test(subets.DeepEqual(expect)))
+t.Run("Expect correct sum", subtest.Value(result).Test(subtest.DeepEqual(expect)))
 ```
 
 Or to break the code up even further:
