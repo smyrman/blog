@@ -4,7 +4,7 @@ While Go as of version 1.16 does not support Generics, there is an accepted [lan
 
 By far the easiest way to test out Go generics, is to use the playground. And there is nobody saying that the playground isn't awesome. However awesome though, there is clear limits to how much you can reasonably try out in the playground alone. What if you have enough code to start splitting into files? What if you want to write _unit-tests_? How would a full package look like with generics? In my view, the _best_ way to try out a new feature, is to actually do something useful. And to do this with generics, we need to venture out of the safety and comfort of the playground.
 
-> My hope is that this will _inspire_ you to do your own experiments with Go generics _beyond the playground_, by writing something _potentially useful_. Only then, can we truly see if generics itself, is going to be useful in Go.
+> My hope is that this will _inspire_ you to do your own experiments with Go generics _beyond the playground_ and write something _potentially useful_. Only then, can we truly see if generics itself, is going to be useful in Go.
 
 In this article, I will go through how I [re-wrote][subx] a [test matching library][subtest] from scratch with generics as part of the tool-box. My hope is that this will _inspire_ you to do your own experiments with Go generics _beyond the playground_ and write something _potentially useful_. Only then, can we truly see if generics itself, is going to be useful in Go. If you want, you could use the library in this article for _testing_ your experiments; or you can extend it with more checks and do a pull request.
 
@@ -251,15 +251,14 @@ func Test(vf func() T, cf CheckFunc[T]) func(t *testing.T) {
 Each individual check can either rely on type parameterization or not. E.g.:
 
 ```go
+// A type parameterized check that works on any value.
+func DeepEqual[T any](w T) CheckFunc[T] {...}
+
 // A type parameterized check that works for comparable values.
 func CompareEqual[T comparable](v T) CheckFunc[T] {...}
 
 // A check that works for time values.
 func TimeBefore(t time.Time) CheckFunc[time.Time] {...}
-
-// A type parameterized check that works on any value, but compares against an
-// interface instead of the specific type.
-func DeepEqual[T any](w interface{}) CheckFunc[T] {...}
 
 // A type parameterized check that works on any value, without a compare value.
 func ReflectNil[T any]() CheckFunc[T]
@@ -283,8 +282,8 @@ func TestSum(t *testing.T) {
 
 	result, err := mypkg.Sum(a, b)
 
-	t.Run("Expect no error", subx.Test(subx.Value(err), subx.CompareEqual(nil))
-	t.Run("Expect correct sum", subx.Test(subx.Value(result), subx.DeepEqual[mypkg.Vector](expect)))
+	t.Run("Expect no error", subx.Test(subx.Value(err), subx.CompareEqual[error](nil))
+	t.Run("Expect correct sum", subx.Test(subx.Value(result), subx.DeepEqual(expect)))
 }
 ```
 
@@ -328,7 +327,7 @@ fmt.Println("CHECK sum error:", cf(subtest.Value(result)))
 
 Now I have told you how I went beyond the playground to re-design a package with Go generics. Now, it's your turn!
 
-I hereby challenge you to find something _useful_ to do with generics. Re-design a package. Write an ORM with generics. PR more checks for subx. What ever you find that you want to do, following the README instructions of [go2go][go2go-readme] and [subx][subx] should be enough to get you started.
+I hereby challenge you to find something _useful_ to do with generics. Re-design a package. Write an ORM with generics. What ever you find that you want to do, following the README instructions of [subx][subx] should be enough to get you started.
 
 Fair warning: As of the time of writing, writing anything with generics is a bit of a time-travel in terms of editor support. We are now quite spoiled by the features of `gopls`, `gofmt`, `goimport` and more. Not to mention, syntax highlighting. At the time of writing, none of this works for Go generics. You have to remove your own whitespace, insert your own imports, and align your own struct tags. No that you are warned; God speed!
 
