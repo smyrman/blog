@@ -1,4 +1,4 @@
-# Go generics beyond the playground
+# Go generics beyond the playground [DRAFT]
 
 While Go as of version 1.16 does not support Generics, there is an accepted [language proposal][lang-prop] for it, and we can _probably_ expect it to arrive in Go 1.18 or later. But as it turns out, we don't need to wait for it to start experimenting with the new feature. We can start _now_ to write small snippets of code on the [go2go playground][go2go-play], or even full Go packages that you [develop locally][go2go-readme].
 
@@ -8,7 +8,7 @@ By far the easiest way to test out Go generics, is to use the playground. And th
 
 In this article, I will go through how I [re-wrote][subx] a [test matching library][subtest] from scratch with generics as part of the tool-box. My hope is that this will _inspire_ you to do your own experiments with Go generics _beyond the playground_ and write something _potentially useful_. Only then, can we truly see if generics itself, is going to be useful in Go. If you want, you could use the library in this article for _testing_ your experiments; or you can extend the library and do a pull request.
 
-Before we start: a warning. I will assume basic knowledge about the generics proposal in Go, and what's the most important key design concepts. If you don't have this knowledge, I would recommend that you first acquire it. E.g. by reading [Go 2 generics in 5 minutes][go-generics-5min], by reading the [updated design draft][design-draft], or by doing your own experiments in the [go2go playground][go2go-play] first. In the meantime, keep this article on your TO-READ list. With that said, because we are trying to do something _potentially useful_, this article will definitively be more about package design then on generics itself. This is the _side-effect_ of simply adding generics to our toolbox, rather then trying to write everything with generics (like we did with channels back before the release of Go v1). Be reassured though, generics will definitely still be an _essential_ part of our (re-)design.
+Before we start: a warning. I will assume basic knowledge about the generics proposal in Go and what the most important design concepts are. If you don't have this knowledge, I would recommend that you first acquire it. E.g. by reading [Go 2 generics in 5 minutes][go-generics-5min], by reading the [updated design draft][design-draft], or by doing your own experiments in the [go2go playground][go2go-play] first. In the meantime, keep this article on your TO-READ list. With that said, because we are trying to do something _potentially useful_, this article will be more about package design then about generics itself. This is the _side-effect_ of simply adding generics to our toolbox, rather then trying to write everything with generics (like we did with channels back before the release of Go v1). Be reassured though, generics will definitely still be an _essential_ part of our (re-)design.
 
 ## A problem to solve (again) with generics
 
@@ -40,7 +40,7 @@ Which may give the following output in the case of a failure:
 
 ```txt
 --- FAIL: TestSum (0.00s)
-    /Users/smyrman/Code/blog/2021-01-subtest/mypkg/sum_test.go:18:
+    /Users/smyrman/Code/blog/2021-03-generic-test-library/mypkg/sum_test.go:18:
         	Error Trace:	sum_test.go:18
         	Error:      	Not equal:
         	            	expected: mypkg.Vector{0, 1, -2}
@@ -59,20 +59,20 @@ Which may give the following output in the case of a failure:
         	            	 }
         	Test:       	TestSum
 FAIL
-FAIL	github.com/smyrman/blog/2021-01-subtest/mypkg	0.125s
+FAIL	github.com/smyrman/blog/2021-03-generic-test-library/mypkg	0.125s
 FAIL
 ```
 
-So, to the problems. Problems in design, are often subtle ones. The once you can't quite put your finger on. But once you know about them, they are hard not to se. In this short snippet of code and test failure output, there is actually as much as _six problems_ that I want to bring to attention:
+So, to the problems. Problems in design are often subtle ones. The ones you can't quite put your finger on. Once you know about them though, they are hard not to se. In this short snippet of code and failure output, there is actually as much as _six problems_ that I want to bring to attention:
 
-1. We have to pass in the `t` parameter. It's a minor inconvenience, but enough for Dave Cheney to write a quite hacky but definitively [interesting package][pkg-expect] for solving it. Not recommended for production use, I might add.
-2. The "got" and "want" parameter order is hard to get right. If you are observant, you might have noticed that the code above gets it _wrong_; expected is supposed to come first (for most checks in assert, with a few exceptions).
-3. From simply _starring_ at the code (which is what code reviewers generally do) it's not obviously clear what's meant by _Equal_. It's well enough _documented_, but from the name alone, it's not clear if it's going to use the equal comparison (`==`), if it using `reflect.DeepEqual`, or if it can, for instance, handel equal comparison of two `time.Time` instances with a different time-zone. At some point, subtile details in how equality is implemented, might come back and bite you. Especially so if any of these details don't match the comparison you _usually do_ in your programs.
-4. The descriptive text for what went wrong is _optional_; and thus easily omitted. This can make debugging failing tests hard, as there is little information to exactly _what_ went wrong (other than two values did not compare equal). Especially so if you have multiple assert statements. Is it the result from the function under test that's wrong? Is this just a sanity check before running the main test?
+1. We have to pass in the `t` parameter. It's a minor inconvenience, but enough for Dave Cheney to write a quite [interesting package][pkg-expect] for solving it. Not recommended for production use, I might add.
+2. The "got" and "want" parameter order is hard to get right. If you are observant, you might have noticed that the code above gets it _wrong_. This can lead to significant confusion when debugging a problem. As a  rule of thumb if you use the `assert` package a lot, the "expected" parameter in `assert` is supposed to come _first_ (with a few exceptions).
+3. From simply _starring_ at the code (which is what code reviewers generally do) it's not obviously clear what's meant by _Equal_. It's well enough _documented_, but from the name alone, it's not clear if it's going to use the equal comparison (`==`), if it using `reflect.DeepEqual`, or if it can, for instance, handel equal comparison of two `time.Time` instances with a different time-zone. At some point, subtile details in how equality is implemented, might come back and bite us. Especially so if any of these details don't match the comparison we _usually do_ in our programs.
+4. The descriptive text for what went wrong is _optional_; and thus easily omitted. This can make debugging failing tests hard, as there is little information to exactly _what_ went wrong (other than two values did not compare equal). Especially so if we have multiple assert statements. Is it the result from the function under test that's wrong? Is this just a sanity check before running the main test?
 5. For what the output potentially lack of _useful_ information, it makes up for in _redundant_ information. Why do we need a diff for finding the difference between these simple struct instances? Given the diff is printed, why do we also get the "actual" and "expected" one-liners? Why is the filename and line trace information repeated? Why is the _test name_ repeated?
-6. There is no compile-time type safety for the various checks. Of course, one might say, but if type-safety is beneficial in the _rest_ of your programs, would it not also be beneficial in tests?
+6. Many of the library assertion, `assert.DeepEqual` included, lack compile-time type safety. Of course, one might say, but if type-safety is beneficial in the _rest_ of our programs, would it not also be beneficial in tests?
 
-In our test-matcher for Clarify (called subtest), we have managed to to solve many of these problems. But before we get into how, let's first rewrite out example test:
+In our test-matcher for Clarify (called `subtest`), we have managed to to solve many of these problems. In order to explain how, let's first rewrite the test function for `mypkg.Sum`:
 
 ```go
 func TestSum(t *testing.T) {
@@ -92,13 +92,13 @@ Which in case of a failing test, may give the output:
 ```txt
 --- FAIL: TestSum (0.00s)
     --- FAIL: TestSum/Expect_correct_sum (0.00s)
-        /Users/smyrman/Code/blog/2021-01-subtest/mypkg/sum_test.go:30: not deep equal
+        /Users/smyrman/Code/blog/2021-03-generic-test-library/mypkg/sum_test.go:30: not deep equal
             got: mypkg.Vector
                 [0 1 -2]
             want: mypkg.Vector
                 [1 1 1]
 FAIL
-FAIL	github.com/smyrman/blog/2021-01-subtest/mypkg	0.174s
+FAIL	github.com/smyrman/blog/2021-03-generic-test-library/mypkg	0.174s
 FAIL
 ```
 
@@ -114,11 +114,11 @@ Next up, as we pass the `func(*testing.T)` instance returned by `DeepEqual` to `
 test -name '^TestSum/Expect_correct_sum'
 ```
 
-Next up, we kept our test-output _brief_ without repeating any information. We should note that there definitively is some cases where we would not get _enough_ information from this brief output format. So this is defiantly just one of those trade-offs that could be improved.
+Next up, we kept our test-output _brief_ without repeating any information. We should note that there definitively is some cases where we would not get _enough_ information from this brief output format. While the library do allow some output customization, this is one of those trade-offs that could probably be improved.
 
-As for the final problem though, compile time type-safety, `subtest` definitively falls short. We can still pass pretty much anything into the `subtest.Value` and various test initializer methods, and it won't detect any type mismatches for us before the test run. Besides, does it really make sense to have the same test initializer methods available for all Go types? Should not a `subtest.Value(time.Time{})` provide methods that are useful for comparing times, such as a time specific `Time{}.Equal`, `Time{}.Before` and `Time{}.After` method?
+As for the final problem though, compile time type-safety, `subtest` falls short. We can still pass pretty much anything into the `subtest.Value` and various test initializer methods, and it won't detect any type mismatches for us before the test run. Besides, does it really make sense to have the same test initializer methods available for all Go types? Should not a `subtest.Value(time.Time{})` provide methods that are useful for comparing times, such as a time specific `Time{}.Equal`, `Time{}.Before` and `Time{}.After` method?
 
-If we do the count, we gather that `subtest` appear to solve five out of the six problems we identified with the assert library. At this point though, it's important to note that at the time when the `assert` package was designed, the sub-test feature in Go did not yet exist. Therefore it would have been impossible for that library to embed it into it's design. This is also true for [Gomega][gomega] and [Ginko][ginko], which have been to some inspiration for `subtest`. This only proves to demonstrate that with new features in the Go language and standard library, new ways of designing programs become possible. And this brings us to generics.
+If we do the count, we gather that `subtest` appear to solve five out of the six problems we identified with the assert library. At this point though, it's important to note that at the time when the `assert` package was designed, the sub-test feature in Go did not yet exist. Therefore it would have been impossible for that library to embed it into it's design. This is also true for when [Gomega][gomega] and [Ginko][ginko] where designed. If these test frameworks where created _now_, then perhaps parts of their design would have been done differently; or perhaps not. This only proves to demonstrate that with new features in the Go language and standard library, new ways of designing programs become possible. And this brings us to generics.
 
 With generics added to our tool-box, can we manage to solve all six problems by _starting over_?
 
@@ -178,7 +178,8 @@ valueFunc := subtest.Value(result)
 // Step 2: create a check:
 check := subtest.DeepEqual(expect)
 
-// Step 3: Combine the value initializer and the check into a test function:
+// Step 3: Combine the value initializer and the check into a
+// test function:
 testFunc := valueFunc.Test(check)
 
 // Step 4: Run the test function as a Go sub-test:
@@ -210,15 +211,16 @@ func (f checkFunc) Check(vf ValueFunc) error {
 // A value initializer function.
 type ValueFunc func() (interface{}, error)
 
-// An adapter to convert a plain value to a value initializer function.
+// An adapter to convert a plain value to a value initializer
+// function.
 func Value(v interface{}) ValueFunc {
     return func() (interface{}, error) {
         return v, nil
     }
 }
 
-// A method that constructs and returns a Go (sub-)test function from the
-// combination of a value initializer and a check.
+// A method that constructs and returns a Go (sub-)test function
+// from the combination of a value initializer and a check.
 func (vf) Test(c Check) func(*testing.T) {
     return func(t *testing.T) {
         if err := c.Check(vf); err != nil {
@@ -238,16 +240,17 @@ Finally, the re-design. With _generics_, or _type parameterization_, which the p
 // The check function type.
 type CheckFunc[T any]func(func() T) error
 
-// An adapter for converting a value to a value initializer function.
+// An adapter for converting a value to a value initializer
+// function.
 func Value[T any](v T) func() T {
 	return func() T{
 		return v
 	}
 }
 
-// A function for combining a compatible value initializer and a check function
-// into a Go (sub-)test.
-func Test(vf func() T, cf CheckFunc[T]) func(t *testing.T) {
+// A function for combining a compatible value initializer and a
+// check function into a Go (sub-)test.
+func Test[T any](vf func() T, cf CheckFunc[T]) func(t *testing.T) {
 	return func(t *testing.T) {
 		if err := c.Check(vf); err != nil {
 			t.Fatal(err.Error())
@@ -259,11 +262,12 @@ func Test(vf func() T, cf CheckFunc[T]) func(t *testing.T) {
 Each individual check implementation, or check initializer implementation to be exact, can be declared with various degrees of type parameterization:
 
 ```go
-// A type parameterized check initializer that can be initialized for any type.
+// A type parameterized check initializer that can be initialized
+// for any type.
 func DeepEqual[T any](w T) CheckFunc[T] {...}
 
-// A type parameterized check initializer that can only be initialized with
-// a comparable type.
+// A type parameterized check initializer that can only be
+// initialized with a comparable type.
 func CompareEqual[T comparable](v T) CheckFunc[T] {...}
 
 // A type parameterized check without a compare value.
@@ -281,7 +285,7 @@ type Vector struct{
 }
 ```
 
-If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test:
+If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test.
 
 ```go
 func TestSum(t *testing.T) {
@@ -298,16 +302,18 @@ func TestSum(t *testing.T) {
 
 Note that due to Go generic type inference, we don't always need to explicitly specify that type (using `[T]` syntax) when using a generic type.
 
+Looking at the final code, you might argue that the `subx.Test` function has reintroduced the ordering issue of the "got" and "want" parameters. There is however one important difference between this code and the `assert.Equal` function: if you order the value and check wrong with subx, compilation will fail. That said, until now, we have only been considering the "long" syntax.
+
 ## Some cool things we can do with subx
 
 While not part of the core design, we define syntactic sugar that allows different short-hand methods to be placed on different value-initializer functions. E.g.:
 
 ```go
-// Instead Of:
+// Long syntax:
 result := mypkg.Sum(2, 3)
 t.Run("Expect correct sum", subtest.Test(subtest.Value(result), subtest.CompareEqual(5)))
 
-// We can write:
+// Short-hand syntax:
 result := mypkg.Sum(2, 3)
 t.Run("Expect correct sum", subtest.Number(result).Equal(5))
 ```
@@ -329,7 +335,7 @@ If we want to run a check outside of a test, we can do that as well:
 ```go
 result := mypkg.Sum(2, 3)
 cf := subtest.CompareEqual(5)
-fmt.Println("CHECK sum error:", cf(subtest.Value(result)))
+fmt.Println("CHECK sum error:", cf(subx.Value(result)))
 ```
 
 ## Challenge: go beyond the playground
@@ -338,7 +344,7 @@ Now I have told you how I went beyond the playground to re-design a package with
 
 I hereby challenge you to find something _useful_ to do with generics. Re-design a package. Write an ORM with generics. What ever you find that you want to do, following the README instructions of [subx][subx] should be enough to get you started.
 
-Fair warning: As of the time of writing, writing anything with generics is a bit of a time-travel in terms of editor support. We are now quite spoiled by the features of `gopls`, `gofmt`, `goimport` and more. Not to mention, syntax highlighting. At the time of writing, none of this works for Go generics. You have to remove your own whitespace, insert your own imports, and align your own struct tags. No that you are warned; God speed!
+Fair warning: As of the time of writing, writing anything with generics is a bit of a time-travel in terms of editor support. We are now quite spoiled by the features of `gopls`, `gofmt`, `goimports` and more. Not to mention, syntax highlighting. At the time of writing, none of this works for Go generics; at least not out of the box. You have to remove your own blank lines, insert your own imports, and align your own struct tags. Now that you are warned; God speed!
 
 [searis]: https://searis.no
 [lang-prop]: https://github.com/golang/go/issues/43651
