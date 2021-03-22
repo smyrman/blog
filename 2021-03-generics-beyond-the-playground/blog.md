@@ -285,19 +285,42 @@ type Vector struct{
 }
 ```
 
-If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test. In order to explain what's happening, we will first show this code _without_ any type inference:
+If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test. Note that we have had to write this as an _internal test_ (i.e. start the file with `mypkg` and not `mypkg_test`), and thus omit the `mypkg.` prefix for the types and functions under test. This is just due to a limitation with the implementation of the the `go2go` experimental tools which are based on code generation and not a real compiler implementation.
+
+In order to explain what's happening in the rewritten code, we will first show the code without any _type inference_:
 
 ```go
 func TestSum(t *testing.T) {
-	a := mypkg.Vector{1, 0, 3}
-	b := mypkg.Vector{0, 1, -2}
-	expect := mypkg.Vector{1, 1, 1}
+	a := Vector{1, 0, 3}
+	b := Vector{0, 1, -2}
+	expect := Vector{1, 1, 1}
 
-	result, err := mypkg.Sum(a, b)
+	result, err := Sum(a, b)
 
-	t.Run("Expect no error", subx.Test(subx.Value[error](err), subx.CompareEqual[error](nil))
-	t.Run("Expect correct sum", subx.Test(subx.Value[mypkg.Vector](result), subx.DeepEqual[mypkg.Vector](expect)))
+	t.Run("Expect no error", subx.Test(
+		subx.Value[error](err),
+		subx.CompareEqual[error](nil),
+	))
+	t.Run("Expect correct sum", subx.Test(
+		subx.Value[Vector](result),
+		subx.DeepEqual[Vector](expect),
+	))
 }
+```
+
+Which might give the following output on failure:
+
+```txt
+--- FAIL: TestSum (0.00s)
+    --- FAIL: TestSum/Expect_correct_sum (0.00s)
+        sum_test.go2:20: comparison failed:
+            got: (mypkg.Vector)
+                [2 2 2]
+            want deep equal to: (mypkg.Vector)
+                [1 1 1]
+FAIL
+exit status 1
+FAIL	github.com/smyrman/subx/examples/vector_sum	0.299s
 ```
 
 Looking at this code, you might argue that the `subx.Test` function has reintroduced the ordering issue of the "got" and "want" parameters. However, it has not. this is because ordering this parameters wrong would lead to a _compile-time error_. We mentioned that using `CompareEqual` would fail compilation for the slice implementation of `mypkg.Vector`. Actually, even `subx.DeepEqual[*mypkg.Vector]` will cause a compilation error. This type-safety can be a useful tool to prevent simple programming mistakes.
@@ -306,14 +329,20 @@ If you read the design proposal, you would know all about type inference, and wh
 
 ```go
 func TestSum(t *testing.T) {
-	a := mypkg.Vector{1, 0, 3}
-	b := mypkg.Vector{0, 1, -2}
-	expect := mypkg.Vector{1, 1, 1}
+	a := Vector{1, 0, 3}
+	b := Vector{0, 1, -2}
+	expect := Vector{1, 1, 1}
 
-	result, err := mypkg.Sum(a, b)
+	result, err := Sum(a, b)
 
-	t.Run("Expect no error", subx.Test(subx.Value(err), subx.CompareEqual[error](nil))
-	t.Run("Expect correct sum", subx.Test(subx.Value(result), subx.DeepEqual(expect)))
+	t.Run("Expect no error", subx.Test(
+		subx.Value(err),
+		subx.CompareEqual[error](nil),
+	))
+	t.Run("Expect correct sum", subx.Test(
+		subx.Value(result),
+		subx.DeepEqual(expect),
+	))
 }
 ```
 
@@ -324,7 +353,10 @@ While not part of the core design, we define syntactic sugar that allows differe
 ```go
 // Long syntax:
 result := mypkg.Sum(2, 3)
-t.Run("Expect correct sum", subtest.Test(subtest.Value(result), subtest.CompareEqual(5)))
+t.Run("Expect correct sum", subtest.Test(
+	subtest.Value(result),
+	subtest.CompareEqual(5),
+))
 
 // Short-hand syntax:
 result := mypkg.Sum(2, 3)
