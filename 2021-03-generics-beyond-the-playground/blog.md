@@ -389,7 +389,7 @@ Now I have told you how I went beyond the playground to re-design a package with
 
 I hereby challenge you to find something _useful_ to do with generics. Re-design a package. Write an ORM with generics. What ever you find that you want to do, following the README instructions of [subx][subx] should be enough to get you started.
 
-Fair warning: As of the time of writing, writing anything with generics is a bit of a time-travel in terms of editor support. We are now quite spoiled by the features of `gopls`, `gofmt`, `goimports` and more. Not to mention, syntax highlighting. At the time of writing, none of this works for Go generics; at least not out of the box. You have to remove your own blank lines, insert your own imports, and align your own struct tags. Now that you are warned; God speed!
+Fair warning: As of the time of writing, writing anything with generics is a bit of a time-travel in terms of editor support. We are now quite spoiled by the features of `gopls`, `gofmt`, `goimports` and more. Not to mention, syntax highlighting. At the time of writing, none of this works for Go generics; at least not out of the box. You have to remove your own blank lines, insert your own imports, and align your own struct tags. Now that you are warned; Godspeed!
 
 [searis]: https://searis.no
 [lang-prop]: https://github.com/golang/go/issues/43651
