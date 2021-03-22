@@ -188,7 +188,7 @@ t.Run("Expect correct sum", testFunc)
 
 Obviously, the check portion here can be _replaced_. E.g. instead of `subtest.DeepEqual`, we could use [`subtest.NumericEqual`](https://pkg.go.dev/github.com/searis/subtest#NumericEqual), [`subtest.Before`](https://pkg.go.dev/github.com/searis/subtest#Before) or even a user defined check. This is powered by a combination of Go interfaces and first-class function support.
 
-While the subtest package has several checks and some formatting helpers, the core design can actually be summarized in very few lines of code:
+While the subtest package has several checks and some formatting helpers, the core design can actually be summarized in very few lines of code.
 
 ```go
 
@@ -234,7 +234,7 @@ So comes the problem to solve with generics. Because what's the point of passing
 
 ## The generic re-design
 
-Finally, the re-design. With _generics_, or _type parameterization_, which the proposed Go generics is more accurately called, we can enforce type-safety for the check and value initializer combination into tests. To demonstrate how, here is a re-write of the subtest core-design:
+Finally, the re-design. With _generics_, or _type parameterization_, which the proposed Go generics is more accurately called, we can enforce type-safety for the check and value initializer combination into tests. To demonstrate how, here is a re-write of the subtest core-design.
 
 ```go
 // The check function type.
@@ -259,7 +259,7 @@ func Test[T any](vf func() T, cf CheckFunc[T]) func(t *testing.T) {
 }
 ```
 
-Each individual check implementation, or check initializer implementation to be exact, can be declared with various degrees of type parameterization:
+Each individual check implementation, or check initializer implementation to be exact, can be declared with various degrees of type parameterization.
 
 ```go
 // A type parameterized check initializer that can be initialized
@@ -277,7 +277,7 @@ func ReflectNil[T any]() CheckFunc[T]
 func TimeBefore(t time.Time) CheckFunc[time.Time] {...}
 ```
 
-The trick here is that the type used to initialize the _check_ and the type returned by the _value initializer_ needs to match. If we try to combine a `subx.TimeBefore` check with a `mypkg.Vector` value initializer, compilation would fail. If we try to combine a `mypkg.CompareEqual` with the same initializer, it will work if `mypkg.Vector` is implemented as a comparable type. E.g. if `mypkg.Vector` is implemented as a struct with three fields, that are all comparable. then it will work:
+The trick here is that the type used to initialize the _check_ and the type returned by the _value initializer_ needs to match. If we try to combine a `subx.TimeBefore` check with a `mypkg.Vector` value initializer, compilation would fail. If we try to combine a `mypkg.CompareEqual` with the same initializer, it will work if `mypkg.Vector` is implemented as a comparable type. E.g. if `mypkg.Vector` is implemented as a struct with three fields, that are all comparable, then it will work.
 
 ```go
 type Vector struct{
@@ -285,9 +285,13 @@ type Vector struct{
 }
 ```
 
-If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test. Note that we have had to write this as an _internal test_ (i.e. start the file with `mypkg` and not `mypkg_test`), and thus omit the `mypkg.` prefix for the types and functions under test. This is just due to a limitation with the implementation of the the `go2go` experimental tools which are based on code generation and not a real compiler implementation.
+If however it is implemented as a slice, it then using `CompareEqual` would result in a compile time error.
 
-In order to explain what's happening in the rewritten code, we will first show the code without any _type inference_:
+```go
+type Vector []float64
+```
+
+ For our rewrite, let's assume the slice implementation. In order to explain what's happening in the rewritten code, we will first show the code without any _type inference_.
 
 ```go
 func TestSum(t *testing.T) {
@@ -346,9 +350,11 @@ func TestSum(t *testing.T) {
 }
 ```
 
+PS! Note that due to a limitation with the `go2go` experimental tool, tests had to be written as _internal test_, unlike the `subtest` example where we declared them as _external tests_. This means, instead of declaring the package as `mypkg_test` and do an import of `.../mypkg`, which would better demonstrate real usage of the package, we _have to_ declare the package as `mypkg` and omit the import.
+
 ## Some cool things we can do with subx
 
-While not part of the core design, we define syntactic sugar that allows different short-hand methods to be placed on different value-initializer functions similar to subtest. E.g.:
+While not part of the core design, we define syntactic sugar that allows different short-hand methods to be placed on different value-initializer functions similar to subtest.
 
 ```go
 // Long syntax:
@@ -363,7 +369,7 @@ result := mypkg.Sum(2, 3)
 t.Run("Expect correct sum", subtest.Number(result).Equal(5))
 ```
 
-If we have a function that isn't reliable, we can repeat a check:
+If we have a function that isn't reliable, we can repeat a check.
 
 ```go
 vf := func() int {
@@ -375,7 +381,7 @@ t.Run("Expect stabler results", subx.Test(vf,
 ))
 ```
 
-If we want to run a check outside of a test, we can do that as well:
+If we want to run a check outside of a test, we can do that as well.
 
 ```go
 result := mypkg.Sum(2, 3)
@@ -383,7 +389,7 @@ cf := subx.CompareEqual(5)
 fmt.Println("CHECK sum error:", cf(subx.Value(result)))
 ```
 
-## Challenge: go beyond the playground
+## Challenge: Go beyond the playground
 
 Now I have told you how I went beyond the playground to re-design a package with Go generics. Now, it's your turn!
 
