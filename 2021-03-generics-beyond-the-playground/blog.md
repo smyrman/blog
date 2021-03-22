@@ -285,7 +285,7 @@ type Vector struct{
 }
 ```
 
-If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test. When doing so, in order to explain what's happening, we will first show this code _without_ any type inference:
+If however it is implemented as `type Vector []float64`, then a compilation with `CompareEqual` would fail. Assuming that `CompareEqual` won't work, we can now rewrite our test. In order to explain what's happening, we will first show this code _without_ any type inference:
 
 ```go
 func TestSum(t *testing.T) {
@@ -300,13 +300,9 @@ func TestSum(t *testing.T) {
 }
 ```
 
-Note that if we try to replace `subx.DeepEqual[mypkg.Vector]` with `subx.DeepEqual[*mypkg.Vector]` then compilation would _fail_, preventing us from doing what would most likely be a programmer _mistake_. If however we _want_ this behavior, nothing is stopping us from doing:
+Looking at this code, you might argue that the `subx.Test` function has reintroduced the ordering issue of the "got" and "want" parameters. However, it has not. this is because ordering this parameters wrong would lead to a _compile-time error_. We mentioned that using `CompareEqual` would fail compilation for the slice implementation of `mypkg.Vector`. Actually, even `subx.DeepEqual[*mypkg.Vector]` will cause a compilation error. This type-safety can be a useful tool to prevent simple programming mistakes.
 
-```go
-t.Run("Expect correct sum", subx.Test(subx.Value[interface{}](result), subx.DeepEqual[interface{}](expect)))
-```
-
-If you read the design proposal, you would know all about type inference, and when it can and cannot be used. I must admit, I took more of the the trial and error approach here. Besides, it might still change before the final inclusion into Go; I will read about it later. Anyways, with the current type-inference implemented in the `go2go` tool, the code can be simplified to:
+If you read the design proposal, you would know all about type inference, and when it can and cannot be used; or perhaps you discovered how through some trial and error in the playground. With the current type-inference implemented in the `go2go` tool, the `[T]` syntax can be omitted everywhere in our example except for when comparing an error to nil. This again makes the code more readable.
 
 ```go
 func TestSum(t *testing.T) {
@@ -321,12 +317,9 @@ func TestSum(t *testing.T) {
 }
 ```
 
-Looking at the final code, you might argue that the `subx.Test` function has reintroduced the ordering issue of the "got" and "want" parameters. However, it has not. this is because ordering this parameters wrong would lead to a _compile-time error_.
-
-
 ## Some cool things we can do with subx
 
-While not part of the core design, we define syntactic sugar that allows different short-hand methods to be placed on different value-initializer functions. E.g.:
+While not part of the core design, we define syntactic sugar that allows different short-hand methods to be placed on different value-initializer functions similar to subtest. E.g.:
 
 ```go
 // Long syntax:
@@ -342,11 +335,11 @@ If we have a function that isn't reliable, we can repeat a check:
 
 ```go
 vf := func() int {
-	return Sum[int](2, 2, 1)
+	return mypkg.Sum(2, 2, 1)
 }
 
 t.Run("Expect stabler results", subx.Test(vf,
-	subx.AllOf(subx.Repeat(1000, subx.CompareEqual[int](5))...),
+	subx.AllOf(subx.Repeat(1000, subx.CompareEqual(5))...),
 ))
 ```
 
@@ -354,7 +347,7 @@ If we want to run a check outside of a test, we can do that as well:
 
 ```go
 result := mypkg.Sum(2, 3)
-cf := subtest.CompareEqual(5)
+cf := subx.CompareEqual(5)
 fmt.Println("CHECK sum error:", cf(subx.Value(result)))
 ```
 
