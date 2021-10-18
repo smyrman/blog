@@ -1,6 +1,6 @@
 # Package sync/v2 for generics? [DRAFT]
 
-This article, we wil explore how the `sync` package (and `sync/atomic`) might look like, if a upgraded to support generics through _package versioning_. This is not a _formal_ proposal, but rather part of a [larger discussion][discussion] on Go's GitHub project. For a quick introduction to the generics proposal in Go, and to the flavor of versioning used in this series of articles, please read the [introduction article][intro].
+This article, we wil explore how the `sync` package (and `sync/atomic`) might look like, if upgraded to support generics through _package versioning_. This is not a _formal_ proposal, but rather part of a [larger discussion][discussion] on Go's GitHub project. For a quick introduction to the generics proposal in Go, and to the flavor of versioning used in this series of articles, please read the [introduction article][intro].
 
 [intro]: 1-v2-for-generics.md
 [discussion]: https://github.com/golang/go/discussions/48287
@@ -13,7 +13,7 @@ If type aliases where to support type parameterization, then we could perhaps ap
 
 ## sync/v2
 
-To imagine how a `sync/v2` package, might look like, let's recap how the `sync` package looks today. Below is a list of the public interface of the package as of Go 1.17:
+To imagine how a `sync/v2` package, might look like, let's recap how the `sync` package looks today. Below is a listing of the public interface of the package as of Go 1.17:
 
 ```go
 type Cond
@@ -64,7 +64,7 @@ type Pool[V any]
 	func (p *Pool[V]) Put(x V)
 ```
 
-As it turns out, the implementation of the `sync` "v1" can perhaps be written in as little as 10 lines of code:
+As it turns out, the implementation of the `sync` v1 package can the _probably_ be recreated in just 10 lines of code:
 
 ```go
 package sync
@@ -85,7 +85,7 @@ Now, let's move on to the only sub-package.
 
 ## sync/v2/atomic
 
-As mentioned in the [introduction article][intro], this series always introduce the versioning after the _first element_, and as a consequence, if we want to version the `sync` package, we also have to version the `sync/atomic` package. Wether this package _needs_ generics is a discussion in itself, but let's for now imagine that we do choose to add generics to almost all of the exposed functions. How could we do that?
+As mentioned in the [introduction article][intro], this series always introduce the versioning after the _first element_, and as a consequence, if we want to version the `sync` package, we also have to version the `sync/atomic` package. Wether this package _needs_ generics is a discussion in itself, but let's for now assume that we have choosen to add generics to the _entire_ public interface. How could we do that?
 
 To refresh, this is how the public interface for the package looks like today:
 
@@ -137,7 +137,7 @@ type Value[T any]
     func (v *Value) Swap(new T) (old T)
 ```
 
-Value is an interesting case, because by implementation it is controlling access to _pointers_ to the concrete type, and we could be discussing if we would really want to the Value type to look like this for a `v2` pacakage, but for the scope of this article, let's just assume that we do.
+Value is an interesting case because the implementation it actually not controlling atomic access to the type itself, but uses _pointers_ to give us an illusion that it does. We could be discussing if we would really want to simlply type parammetrize the type with no further changes, but for the scope of this article, let's assume that's exactly what we want
 
 As far as I have been able to read in the discussion, this is as far as the proposals go in terms of transferring the `sync/atomic` package to use generics. However, it doesn't need to end there. In fact, we can _perhaps_ manage reduce the number of public functions from 29 to just 5 by introducing a few type set constraints:
 
@@ -157,9 +157,9 @@ func Store[T Atomic](addr *T, val T)
 func Swap[T Atomic](addr *T, new T) (old T)
 ```
 
-I say perhaps, because the devil here is in the detail. None of these functions are _actually_ implemented in the `sync/atomic` package, but rather in the internal portions of the Go runtime, and we do need them to be _fast_. Therefore we don't want to do no explicit type-switching in Go here in order to determine which runtime method to call; instead, we need this to be solved _compile-time_.
+I say perhaps, because the devil here is in the detail. None of these functions are _actually_ implemented in the `sync/atomic` package, but rather in the internal portions of the Go runtime, and we do need them to be _fast_. Therefore we don't want to depend on explicit type-switching in Go -- which would include a potenitally expensive branch condition -- to determine which runtime method to call; instead, we need this to be solved _compile-time_.
 
-In the current sync atomic package, we _refer_ to the implementation using the Go assembly syntax in a file called `asm.s`. If this is to _work_, then the assembly syntax itself must be extended to support type parameterization values. E.g.:
+In the current sync atomic package, we _refer_ to the runtime implementation using the Go assembly syntax in a file called `asm.s`. If the generic interface for this function is to _work_, then the assembly syntax itself must be extended to support type parameterization values in the function names. E.g.:
 
 ```asm
 TEXT ·Swap[int32](SB),NOSPLIT,$0
